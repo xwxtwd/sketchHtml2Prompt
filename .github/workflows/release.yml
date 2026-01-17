@@ -56,43 +56,31 @@ jobs:
           pnpm run build:firefox
           pnpm run zip:firefox
       
+      - name: List output files
+        run: |
+          echo "Checking .output directory:"
+          ls -la .output/ || echo ".output directory not found"
+          find .output -name "*.zip" -type f || echo "No zip files found"
+      
       - name: Create Release
         id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: v${{ steps.bump_version.outputs.new_version }}
-          release_name: Release v${{ steps.bump_version.outputs.new_version }}
+          name: Release v${{ steps.bump_version.outputs.new_version }}
           body: |
             ## 版本 ${{ steps.bump_version.outputs.new_version }}
             
             自动构建的浏览器扩展程序
             
             ### 下载
-            - Chrome/Edge: chrome-mv3-prod.zip
-            - Firefox: firefox-mv2-prod.zip
+            - Chrome/Edge: sketchHtml2Code-chrome-v${{ steps.bump_version.outputs.new_version }}.zip
+            - Firefox: sketchHtml2Code-firefox-v${{ steps.bump_version.outputs.new_version }}.zip
             
             Co-Authored-By: Warp <agent@warp.dev>
           draft: false
           prerelease: false
-      
-      - name: Upload Chrome Extension
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./.output/chrome-mv3-prod.zip
-          asset_name: sketchHtml2Code-chrome-v${{ steps.bump_version.outputs.new_version }}.zip
-          asset_content_type: application/zip
-      
-      - name: Upload Firefox Extension
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: ./.output/firefox-mv2-prod.zip
-          asset_name: sketchHtml2Code-firefox-v${{ steps.bump_version.outputs.new_version }}.zip
-          asset_content_type: application/zip
+          files: |
+            .output/*.zip
