@@ -1,0 +1,98 @@
+name: Build and Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Bump version
+        id: bump_version
+        run: |
+          NEW_VERSION=$(node scripts/bump-version.js | tail -n 1)
+          echo "new_version=$NEW_VERSION" >> $GITHUB_OUTPUT
+          echo "New version: $NEW_VERSION"
+      
+      - name: Commit version bump
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add package.json
+          git commit -m "chore: bump version to ${{ steps.bump_version.outputs.new_version }}" || echo "No changes to commit"
+          git push || echo "No changes to push"
+      
+      - name: Build Chrome extension
+        run: |
+          pnpm run build
+          pnpm run zip
+      
+      - name: Build Firefox extension
+        run: |
+          pnpm run build:firefox
+          pnpm run zip:firefox
+      
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ steps.bump_version.outputs.new_version }}
+          release_name: Release v${{ steps.bump_version.outputs.new_version }}
+          body: |
+            ## 版本 ${{ steps.bump_version.outputs.new_version }}
+            
+            自动构建的浏览器扩展程序
+            
+            ### 下载
+            - Chrome/Edge: chrome-mv3-prod.zip
+            - Firefox: firefox-mv2-prod.zip
+            
+            Co-Authored-By: Warp <agent@warp.dev>
+          draft: false
+          prerelease: false
+      
+      - name: Upload Chrome Extension
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./.output/chrome-mv3-prod.zip
+          asset_name: sketchHtml2Code-chrome-v${{ steps.bump_version.outputs.new_version }}.zip
+          asset_content_type: application/zip
+      
+      - name: Upload Firefox Extension
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./.output/firefox-mv2-prod.zip
+          asset_name: sketchHtml2Code-firefox-v${{ steps.bump_version.outputs.new_version }}.zip
+          asset_content_type: application/zip

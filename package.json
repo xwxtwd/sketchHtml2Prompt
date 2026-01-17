@@ -12,7 +12,11 @@
     "zip": "wxt zip",
     "zip:firefox": "wxt zip -b firefox",
     "compile": "tsc --noEmit",
-    "postinstall": "wxt prepare"
+    "postinstall": "wxt prepare",
+    "bump": "node scripts/bump-version.js",
+    "release": "./scripts/release.sh all",
+    "release:chrome": "./scripts/release.sh chrome",
+    "release:firefox": "./scripts/release.sh firefox"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
